@@ -17,11 +17,17 @@ const exerciseSchema = new mongoose.Schema({
 
 const programSchema = new mongoose.Schema({
     name: String,
-    sets: Number,
-    reps: Number,
-    holdTime: Number,
-    weight: Number,
-    side: String,
+    exercises: [{
+        exerciseName: String,
+        sets: Number,
+        reps: Number,
+        holdTime: Number,
+        weight: Number,
+        side: String,
+    }],
+    frequency: Number,
+    breakInterval: Number,
+    selectedDays: [String],
 });
 
 const Category = mongoose.model("Category", exerciseSchema);
@@ -41,8 +47,37 @@ const seedCategories = async () => {
 app.get("/api/categories", async (req, res) => res.json(await Category.find()));
 
 app.post("/api/saveCombo", async (req, res) => {
-    await new Program(req.body).save();
-    res.json({ message: "Combo saved" });
+    console.log("Request Body:", req.body); 
+    try {
+        const { name, exercises, frequency, breakInterval, selectedDays } = req.body;
+
+        if (!name || !Array.isArray(exercises)) {
+            console.error("Invalid data:", req.body);
+            return res.status(400).json({ message: "Invalid data" });
+        }
+
+        const program = new Program({
+            name,
+            exercises: exercises.map(exercise => ({
+                exerciseName: exercise.exerciseName,
+                sets: exercise.sets || 0,
+                reps: exercise.reps || 0,
+                holdTime: exercise.holdTime || 0,
+                weight: exercise.weight || 0,
+                side: exercise.side || '',
+            })),
+            breakInterval,
+            frequency,
+            selectedDays,
+        });
+
+        await program.save();
+        console.log("Combo saved:", program);
+        res.status(201).json({ message: "Combo saved" });
+    } catch (error) {
+        console.error("Error saving combo:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
 });
 
 app.get("/api/programs", async (req, res) => {
